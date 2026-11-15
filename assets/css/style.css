@@ -766,11 +766,17 @@ a.header-cta { display: none; }   /* beats .btn (same specificity, .btn comes la
 /* the header is identical at every scroll position */
 /* the header keeps a single height so scrolling never shifts the layout */
 
-/* Nothing animates on load or on scroll. The page sits still. The reveal class
-   is kept inert so an older cached page can never hide its own content. */
-.reveal, .reveal--right, .reveal--up, .reveal.is-in {
-  opacity: 1 !important; transform: none !important; transition: none !important;
+/* Scroll motion: as you move down the page, content arrives from above and
+   settles into place. Only elements the script tags carry this class, so if the
+   script ever fails nothing is hidden. */
+.reveal {
+  opacity: 0;
+  transform: translate3d(0, -38px, 0);
+  transition: opacity .62s cubic-bezier(.22,.61,.36,1), transform .62s cubic-bezier(.22,.61,.36,1);
+  transition-delay: var(--rd, 0ms);
+  will-change: opacity, transform;
 }
+.reveal.is-in { opacity: 1; transform: none; will-change: auto; }
 
 /* hover is a state, not an animation: the rule darkens, nothing moves */
 @media (hover: hover) {
@@ -778,6 +784,7 @@ a.header-cta { display: none; }   /* beats .btn (same specificity, .btn comes la
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .reveal, .reveal.is-in { opacity: 1 !important; transform: none !important; transition: none !important; }
   .hero-mark { animation: none !important; }
   .scroll-progress { display: none !important; }
   html { scroll-behavior: auto; }

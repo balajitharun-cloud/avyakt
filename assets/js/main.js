@@ -534,7 +534,50 @@
   /* Nothing animates any more: no scroll reveals, no counting numbers, no page
      transitions. The markup renders in place and stays put. These are kept as
      no-ops so the rest of the engine keeps its shape. */
-  function refreshReveal() {}
+  /* ---------- scroll reveal: content arrives from above ---------- */
+  var REVEAL_SELECTORS = [
+    ".page-hero h1", ".page-hero p", ".breadcrumb",
+    ".section-head", ".card", ".person", ".stat", ".gitem", ".video-card",
+    ".timeline li", ".empty-state", ".form-card", ".certp-card"
+  ];
+  var revealObserver = null;
+
+  function refreshReveal() {
+    if (!motionEnabled() || !("IntersectionObserver" in window)) return;
+    if (!revealObserver) {
+      revealObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (!en.isIntersecting) return;
+          en.target.classList.add("is-in");
+          revealObserver.unobserve(en.target);
+        });
+      }, { threshold: 0.1, rootMargin: "0px 0px -6% 0px" });
+    }
+    REVEAL_SELECTORS.forEach(function (sel) {
+      $$(sel).forEach(function (el) {
+        if (el.classList.contains("reveal")) return;
+        if (el.closest(".no-reveal")) return;
+        el.classList.add("reveal");
+        var parent = el.parentElement;
+        if (parent) {
+          var sibs = Array.prototype.filter.call(parent.children, function (c) {
+            return c.classList.contains("reveal");
+          });
+          var i = sibs.indexOf(el);
+          if (i > 0 && i < 12) el.style.setProperty("--rd", (i * 70) + "ms");
+        }
+        // Anything already on screen is revealed straight away (one frame later,
+        // so the transition still plays). This means the observer is only ever
+        // responsible for what is below the fold: if it were ever slow or
+        // unsupported, nothing above the fold can be left invisible.
+        if (el.getBoundingClientRect().top < window.innerHeight) {
+          setTimeout(function () { el.classList.add("is-in"); }, 60);
+        } else {
+          revealObserver.observe(el);
+        }
+      });
+    });
+  }
   function wireStatCount() {}
 
   var paintChrome = null;
