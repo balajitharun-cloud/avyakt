@@ -123,7 +123,7 @@ So the form posts to a small serverless endpoint, which owns the write:
    ```
    GITHUB_TOKEN   = <fine-grained token with Contents: Read and write on this repo>
    GITHUB_OWNER   = balajitharun-cloud     # optional
-   GITHUB_REPO    = ise-horizon-website    # optional
+   GITHUB_REPO    = avyakt                 # optional
    GITHUB_BRANCH  = main                   # optional
    ```
 

@@ -10,7 +10,7 @@
 
   var TOKEN_KEY = "avyakt-gh-token";
   var CFG_KEY = "avyakt-gh-config";
-  var DEFAULTS = { owner: "balajitharun-cloud", repo: "ise-horizon-website", branch: "main" };
+  var DEFAULTS = { owner: "balajitharun-cloud", repo: "avyakt", branch: "main" };
   var API = "https://api.github.com";
 
   function cfg() {
