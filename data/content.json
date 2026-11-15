@@ -1,6 +1,6 @@
 {
   "settings": {
-    "activeMembers": 2,
+    "activeMembers": 3,
     "eventsHosted": 0,
     "passcodeHash": "67b8973601cf3d4b208c7a4215988e1374d55dec4d3aebe0b0d2d1ec8349d9f9"
   },
@@ -57,6 +57,22 @@
     }
   ],
   "members": [
+    {
+      "id": "m-mwhpjjg666dk",
+      "name": "Punya. R. Aradhya",
+      "usn": "1KTIS3009",
+      "year": "1st Year",
+      "branch": "Information Science & Engineering",
+      "interests": [
+        "DSA",
+        "Cloud",
+        "UI/UX",
+        "IoT"
+      ],
+      "role": "Active member",
+      "why": "Have a hope that we learn something from this",
+      "joined": "2026-11-15"
+    },
     {
       "id": "m-mv3q7046o1wm",
       "name": "Balaji Tharun",
