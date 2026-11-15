@@ -11,7 +11,7 @@
    ===================================================================== */
 
 const OWNER  = process.env.GITHUB_OWNER  || "balajitharun-cloud";
-const REPO   = process.env.GITHUB_REPO   || "ise-horizon-website";
+const REPO   = process.env.GITHUB_REPO   || "avyakt";
 const BRANCH = process.env.GITHUB_BRANCH || "main";
 /* Read an env var under any of several names, and strip stray whitespace.
    Pasted tokens very often carry a trailing newline or space, which makes
