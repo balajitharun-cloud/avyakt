@@ -30,7 +30,7 @@ window.HORIZON = {
     { name: "Ankush S", role: "President", initials: "AS" },
     { name: "Haritha G.S", role: "Vice President", initials: "HG" },
     { name: "Akash", role: "Secretary", initials: "A" },
-    { name: "Likhita H.R", role: "Speaker", initials: "LH" },
+    { name: "Likitha H.R", role: "Speaker", initials: "LH" },
     { name: "Vinup N", role: "Treasurer", initials: "VN" },
     { name: "Deepak K B", role: "Treasurer", initials: "DK" },
     { name: "Prakruti N", role: "Treasurer", initials: "PN" },
