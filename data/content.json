@@ -104,16 +104,16 @@
   ],
   "faculty": [
     {
-      "id": "f1",
-      "name": "Rajashekhar",
-      "designation": "HOD",
+      "id": "f2",
+      "name": "Dr H.C Sateesh Kumar",
+      "designation": "Principal",
       "dept": "",
       "note": ""
     },
     {
-      "id": "f2",
-      "name": "Dr H.C Sateesh Kumar",
-      "designation": "Principal",
+      "id": "f1",
+      "name": "Rajashekhar",
+      "designation": "HOD",
       "dept": "",
       "note": ""
     }

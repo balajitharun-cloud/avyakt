@@ -466,6 +466,10 @@
       var m = $("#facultyGrid");
       if (!m) return;
       var f = S.get().faculty || [];
+      // The Principal heads the department, so he always leads the list,
+      // whatever order the panel happens to store them in.
+      var isPrincipal = function (x) { return /principal/i.test(String((x && x.designation) || "")); };
+      f = f.filter(isPrincipal).concat(f.filter(function (x) { return !isPrincipal(x); }));
       m.innerHTML = f.length ? f.map(facultyCard).join("")
         : emptyState("Faculty list coming soon", "The department faculty are added here by the club committee.");
     },
