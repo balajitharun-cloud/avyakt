@@ -344,6 +344,26 @@
     var el = id ? document.getElementById(id) : null;
     if (el) { el.className = "notice " + (ok ? "ok" : "err") + " show"; el.textContent = text; }
   }
+  /* Say plainly whether a change made here can reach visitors, and how. */
+  async function showPublishStatus() {
+    var el = document.getElementById("publishStatus");
+    if (!el || !B) return;
+    var hasServer = await B.probeSave();
+    var hasToken = B.canWrite();
+    if (hasServer || hasToken) {
+      el.className = "notice ok show";
+      el.innerHTML = hasServer
+        ? "Publishing is connected through this site&rsquo;s server. Changes reach visitors in about a minute."
+        : "Publishing uses the GitHub token saved in this browser. Changes reach visitors in about a minute.";
+      return;
+    }
+    el.className = "notice err show";
+    el.innerHTML = "<strong>Changes made here will not reach visitors.</strong> This site is hosted " +
+      "somewhere without the save endpoint (GitHub Pages cannot run it), and no GitHub token is " +
+      "saved in this browser. Add one once in the <strong>Backend</strong> tab, or open the panel on " +
+      "the site&rsquo;s Vercel address instead.";
+  }
+
   function schedulePublish(noteId) {
     if (!B) { setNote(noteId, "Saved on this device.", false); return; }
     setNote(noteId, "Saved. Publishing to the club database\u2026", true);
@@ -661,10 +681,45 @@
   }
 
   /* ---------- gate ---------- */
+  /* Pulling the shared copy replaces whatever is only on this device. Keep a
+     snapshot first, and offer it back if the sync takes anything away - an edit
+     that failed to publish used to vanish the next time the panel was opened. */
+  var preSync = null;
+  function rescueIfShrunk() {
+    if (!preSync) return;
+    var now = S.get();
+    var lost = [];
+    ["events", "pastEvents", "news", "projects", "gallery", "members", "faculty", "videos", "history", "achievements"].forEach(function (k) {
+      var a = (preSync[k] || []).length, b = ((now && now[k]) || []).length;
+      if (a > b) lost.push({ section: k, items: (preSync[k] || []).slice(b) });
+    });
+    if (!lost.length) return;
+    var total = lost.reduce(function (n, x) { return n + x.items.length; }, 0);
+    var el = document.getElementById("publishStatus");
+    if (!el) return;
+    el.className = "notice err show";
+    el.innerHTML = "<strong>" + total + " item(s) that existed only in this browser were replaced by " +
+      "the shared copy.</strong> <button class='btn btn-blue btn-sm' id='rescueBtn' style='margin-left:8px'>Put them back</button>";
+    var btn = document.getElementById("rescueBtn");
+    if (btn) btn.addEventListener("click", async function () {
+      lost.forEach(function (x) {
+        x.items.forEach(function (it) {
+          var arr = S.get()[x.section] || (S.get()[x.section] = []);
+          if (!arr.some(function (o) { return o && it && o.id === it.id; })) arr.push(it);
+        });
+      });
+      S.save(); renderBody();
+      try { await S.publish(); el.className = "notice ok show"; el.textContent = "Restored and published."; }
+      catch (e) { el.className = "notice err show"; el.textContent = "Restored on this device, but publishing failed: " + e.message; }
+    });
+  }
+
   function showPanel() {
     $("#adminGate").classList.add("hidden"); $("#adminPanel").classList.remove("hidden");
     renderTabs(); renderBody();
-    S.sync().then(function () { renderBody(); }).catch(function () {});
+    showPublishStatus();   // independent of the sync, which may fail on its own
+    try { preSync = JSON.parse(JSON.stringify(S.get())); } catch (e) { preSync = null; }
+    S.sync().then(function () { renderBody(); rescueIfShrunk(); }).catch(function () {});
     S.syncStats().then(function () { renderBody(); }).catch(function () {});
   }
 

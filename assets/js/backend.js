@@ -226,6 +226,25 @@
   }
 
   /* ask the site's own backend what it is and whether it works */
+  /* Does this host actually serve /api/save?
+     GitHub Pages is static: the endpoint is missing and a POST comes back 404,
+     so publishing there needs a token in the browser instead. */
+  var saveProbe = null;
+  async function probeSave() {
+    if (saveProbe !== null) return saveProbe;
+    try {
+      var r = await fetch("/api/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}"
+      });
+      saveProbe = (r.status !== 404 && r.status !== 405);
+    } catch (e) {
+      saveProbe = false;
+    }
+    return saveProbe;
+  }
+
   async function diagnose() {
     try {
       var r = await fetch("/api/stats", { headers: { "Accept": "application/json" }, cache: "no-store" });
@@ -246,7 +265,7 @@
     cfg: cfg, setConfig: setConfig,
     token: token, setToken: setToken, canWrite: canWrite,
     pull: pull, push: push, pushBinary: pushBinary, content: content,
-    saveContent: saveContent, saveJson: saveJson, uploadFile: uploadFile, signMedia: signMedia,
+    saveContent: saveContent, saveJson: saveJson, probeSave: probeSave, uploadFile: uploadFile, signMedia: signMedia,
     checkMedia: checkMedia, verify: verify, stats: stats, diagnose: diagnose,
     paths: { content: "data/content.json", certificates: "data/certificates.json", submissions: "data/submissions.json" }
   };

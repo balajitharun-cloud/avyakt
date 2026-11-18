@@ -31,6 +31,40 @@ async function blobLib() {
   try { return await import("@vercel/blob"); } catch (e) { return null; }
 }
 
+/* Resolve the repository's *current* name.
+   A rename leaves GitHub redirecting the old name. That is harmless for a GET,
+   but a redirected PUT is replayed as a GET, so the write silently does nothing
+   while still returning 200. Asking GitHub for the repo returns its real
+   full_name, which we then use for every call. */
+let REPO_SLUG = null;
+async function repoSlug() {
+  if (REPO_SLUG) return REPO_SLUG;
+  const fallback = OWNER + "/" + REPO;
+  if (!GH) return (REPO_SLUG = fallback);
+  try {
+    const r = await fetch("https://api.github.com/repos/" + OWNER + "/" + REPO, { headers: await ghHeaders() });
+    if (r.ok) {
+      const j = await r.json();
+      if (j && j.full_name) REPO_SLUG = j.full_name;
+    }
+  } catch (e) {}
+  return REPO_SLUG || fallback;
+}
+
+/* A PUT that GitHub turned into a redirect comes back 200 with no commit.
+   Treat "no commit" as failure so a silent no-op can never look like success. */
+async function assertCommitted(r, what) {
+  let j = null;
+  try { j = await r.json(); } catch (e) {}
+  if (!j || !j.commit) {
+    const slug = await repoSlug();
+    throw new Error("GitHub accepted the request but created no commit while " + what +
+      ". The server is most likely pointed at an old repository name - set GITHUB_REPO=" +
+      slug.split("/")[1] + " (or remove it) and redeploy.");
+  }
+  return j;
+}
+
 async function ghHeaders() {
   return {
     "Accept": "application/vnd.github+json",
@@ -56,7 +90,7 @@ async function loadMembers() {
     }
   }
   if (GH) {
-    const r = await fetch("https://api.github.com/repos/" + OWNER + "/" + REPO + "/contents/data/content.json?ref=" + encodeURIComponent(BRANCH),
+    const r = await fetch("https://api.github.com/repos/" + await repoSlug() + "/contents/data/content.json?ref=" + encodeURIComponent(BRANCH),
       { headers: await ghHeaders() });
     if (!r.ok) throw new Error("GitHub read failed (" + r.status + ")");
     const meta = await r.json();
@@ -76,7 +110,7 @@ async function loadJson(path) {
   const headers = GH
     ? await ghHeaders()
     : { "Accept": "application/vnd.github+json", "User-Agent": "avyakt-site" };
-  const r = await fetch("https://api.github.com/repos/" + OWNER + "/" + REPO +
+  const r = await fetch("https://api.github.com/repos/" + await repoSlug() +
     "/contents/" + path + "?ref=" + encodeURIComponent(BRANCH), { headers });
   if (!r.ok) throw new Error("GitHub read failed (" + r.status + ")");
   const meta = await r.json();
@@ -90,13 +124,13 @@ async function saveJsonToRepo(loaded, path, content, message) {
     branch: BRANCH
   };
   if (loaded && loaded.sha) body.sha = loaded.sha;
-  const r = await fetch("https://api.github.com/repos/" + OWNER + "/" + REPO + "/contents/" + path, {
+  const r = await fetch("https://api.github.com/repos/" + await repoSlug() + "/contents/" + path, {
     method: "PUT",
     headers: Object.assign({ "Content-Type": "application/json" }, await ghHeaders()),
     body: JSON.stringify(body)
   });
   if (!r.ok) throw new Error("GitHub write failed (" + r.status + ")");
-  const j = await r.json();
+  const j = await assertCommitted(r, "saving " + (message || "the site content"));
   return (j.content && j.content.sha) || "";
 }
 
@@ -104,7 +138,7 @@ async function loadContent() {
   const headers = GH
     ? await ghHeaders()
     : { "Accept": "application/vnd.github+json", "User-Agent": "avyakt-site" };
-  const r = await fetch("https://api.github.com/repos/" + OWNER + "/" + REPO +
+  const r = await fetch("https://api.github.com/repos/" + await repoSlug() +
     "/contents/data/content.json?ref=" + encodeURIComponent(BRANCH), { headers });
   if (!r.ok) throw new Error("GitHub read failed (" + r.status + ")");
   const meta = await r.json();
@@ -131,11 +165,12 @@ async function saveMembers(members) {
 }
 
 async function saveMembersToRepo(loaded, members) {
+  const what = "saving the member list";
   const content = loaded.content;
   content.members = members;
   content.settings = content.settings || {};
   content.settings.activeMembers = members.length;
-  const r = await fetch("https://api.github.com/repos/" + OWNER + "/" + REPO + "/contents/data/content.json", {
+  const r = await fetch("https://api.github.com/repos/" + await repoSlug() + "/contents/data/content.json", {
     method: "PUT",
     headers: Object.assign({ "Content-Type": "application/json" }, await ghHeaders()),
     body: JSON.stringify({
@@ -146,6 +181,7 @@ async function saveMembersToRepo(loaded, members) {
     })
   });
   if (!r.ok) throw new Error("GitHub write failed (" + r.status + ")");
+  await assertCommitted(r, what);
   return true;
 }
 
@@ -157,33 +193,35 @@ async function saveContentToRepo(loaded, content, message) {
     branch: BRANCH
   };
   if (loaded && loaded.sha) body.sha = loaded.sha;
-  const r = await fetch("https://api.github.com/repos/" + OWNER + "/" + REPO + "/contents/data/content.json", {
+  const r = await fetch("https://api.github.com/repos/" + await repoSlug() + "/contents/data/content.json", {
     method: "PUT",
     headers: Object.assign({ "Content-Type": "application/json" }, await ghHeaders()),
     body: JSON.stringify(body)
   });
   if (!r.ok) throw new Error("GitHub write failed (" + r.status + ")");
-  const j = await r.json();
+  const j = await assertCommitted(r, "saving " + (message || "the site content"));
   return (j.content && j.content.sha) || "";
 }
 
 /* ---------- commit a single file (a gallery photo) ---------- */
 async function saveFileToRepo(path, base64, message) {
+  const what = "uploading " + path;
   let sha = null;
   try {
-    const cur = await fetch("https://api.github.com/repos/" + OWNER + "/" + REPO + "/contents/" +
+    const cur = await fetch("https://api.github.com/repos/" + await repoSlug() + "/contents/" +
       path.split("/").map(encodeURIComponent).join("/") + "?ref=" + encodeURIComponent(BRANCH), { headers: await ghHeaders() });
     if (cur.ok) sha = (await cur.json()).sha;
   } catch (e) {}
   const body = { message: message || ("Add " + path), content: base64, branch: BRANCH };
   if (sha) body.sha = sha;
-  const r = await fetch("https://api.github.com/repos/" + OWNER + "/" + REPO + "/contents/" +
+  const r = await fetch("https://api.github.com/repos/" + await repoSlug() + "/contents/" +
     path.split("/").map(encodeURIComponent).join("/"), {
     method: "PUT",
     headers: Object.assign({ "Content-Type": "application/json" }, await ghHeaders()),
     body: JSON.stringify(body)
   });
   if (!r.ok) throw new Error("GitHub write failed (" + r.status + ")");
+  await assertCommitted(r, what);
   return true;
 }
 
